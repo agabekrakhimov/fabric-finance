@@ -1,0 +1,8 @@
+// The server endpoint is automatically resolved by Fabric when the workspace is connected.
+// Replace <onelake-endpoint> with your workspace's OneLake SQL analytics endpoint URL
+// (e.g., <workspace-id>.datawarehouse.pbidedicated.windows.net) if configuring manually.
+expression FinanceLH = #"DatabaseQuery
+	(
+		[kind = ""Lakehouse"", server = ""<onelake-endpoint>"", database = ""FinanceLH""]
+	)"
+	annotation PBI_ResultType = Text

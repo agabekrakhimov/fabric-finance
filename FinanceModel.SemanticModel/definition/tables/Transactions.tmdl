@@ -1,0 +1,86 @@
+table Transactions
+	lineageTag: t-transactions
+
+	column TransactionID
+		dataType: string
+		lineageTag: c-transactionid
+		summarizeBy: none
+		sourceColumn: TransactionID
+
+		annotation SummarizationSetBy = Automatic
+
+	column TransactionDate
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: c-transactiondate
+		summarizeBy: none
+		sourceColumn: TransactionDate
+
+		annotation SummarizationSetBy = Automatic
+
+	column Category
+		dataType: string
+		lineageTag: c-category
+		summarizeBy: none
+		sourceColumn: Category
+
+		annotation SummarizationSetBy = Automatic
+
+	column Description
+		dataType: string
+		lineageTag: c-description
+		summarizeBy: none
+		sourceColumn: Description
+
+		annotation SummarizationSetBy = Automatic
+
+	column Amount
+		dataType: double
+		lineageTag: c-amount
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column Currency
+		dataType: string
+		lineageTag: c-currency
+		summarizeBy: none
+		sourceColumn: Currency
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Total Amount' = SUM(Transactions[Amount])
+		lineageTag: m-totalamount
+		formatString: #,0.00
+
+	measure 'Total Revenue' =
+			CALCULATE(
+				SUM(Transactions[Amount]),
+				Transactions[Category] = "Revenue"
+			)
+		lineageTag: m-totalrevenue
+		formatString: #,0.00
+
+	measure 'Total Expenses' =
+			CALCULATE(
+				SUM(Transactions[Amount]),
+				Transactions[Category] = "Expense"
+			)
+		lineageTag: m-totalexpenses
+		formatString: #,0.00
+
+	measure 'Net Income' = [Total Revenue] + [Total Expenses]
+		lineageTag: m-netincome
+		formatString: #,0.00
+
+	partition Transactions = m
+		mode: directLake
+		state: ready
+		source =
+			let
+				Source = FinanceLH,
+				transactions = Source{[Schema = "dbo", Item = "transactions"]}[Data]
+			in
+				transactions
