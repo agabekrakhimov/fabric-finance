@@ -1,0 +1,3 @@
+relationship TransactionDate_Date
+	fromColumn: Transactions.TransactionDate
+	toColumn: DateTable.Date

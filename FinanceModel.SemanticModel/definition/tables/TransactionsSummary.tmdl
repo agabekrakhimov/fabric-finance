@@ -1,0 +1,37 @@
+table TransactionsSummary
+	lineageTag: t-transactionssummary
+
+	column Category
+		dataType: string
+		lineageTag: c-ts-category
+		summarizeBy: none
+		sourceColumn: Category
+
+		annotation SummarizationSetBy = Automatic
+
+	column Currency
+		dataType: string
+		lineageTag: c-ts-currency
+		summarizeBy: none
+		sourceColumn: Currency
+
+		annotation SummarizationSetBy = Automatic
+
+	column TotalAmount
+		dataType: double
+		lineageTag: c-ts-totalamount
+		summarizeBy: sum
+		sourceColumn: TotalAmount
+
+		annotation SummarizationSetBy = Automatic
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition TransactionsSummary = m
+		mode: directLake
+		state: ready
+		source =
+			let
+				Source = FinanceLH,
+				transactions_summary = Source{[Schema = "dbo", Item = "transactions_summary"]}[Data]
+			in
+				transactions_summary

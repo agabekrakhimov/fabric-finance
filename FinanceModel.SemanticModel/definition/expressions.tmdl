@@ -1,0 +1,5 @@
+expression FinanceLH = #"DatabaseQuery
+	(
+		[kind = ""Lakehouse"", server = ""<onelake-endpoint>"", database = ""FinanceLH""]
+	)"
+	annotation PBI_ResultType = Text
