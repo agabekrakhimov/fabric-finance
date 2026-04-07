@@ -94,7 +94,7 @@ df.show()
 # META   "language_group": "synapse_pyspark"
 # META }
 
-# Create a summary view by month and category
+# Create a summary view by category and currency
 summary_df = (
     df.groupBy(
         "Category",
