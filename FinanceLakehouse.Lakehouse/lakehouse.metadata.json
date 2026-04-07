@@ -1,0 +1,20 @@
+{
+  "displayName": "FinanceLakehouse",
+  "description": "Finance data lakehouse — raw, curated and gold layers for financial analytics",
+  "defaultSchema": "dbo",
+  "storageFormat": "delta",
+  "folders": [
+    {
+      "name": "raw",
+      "description": "Raw ingestion zone — unprocessed source files (CSV, JSON, Parquet)"
+    },
+    {
+      "name": "curated",
+      "description": "Cleansed and conformed finance data"
+    },
+    {
+      "name": "gold",
+      "description": "Aggregated, report-ready finance tables"
+    }
+  ]
+}

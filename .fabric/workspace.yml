@@ -1,0 +1,5 @@
+version: "1.0"
+workspace:
+  displayName: "Finance Starter"
+  description: "Microsoft Fabric workspace for Finance analytics — Lakehouse, Notebook, and Power BI Semantic Model"
+  defaultLakehouse: "FinanceLakehouse"
