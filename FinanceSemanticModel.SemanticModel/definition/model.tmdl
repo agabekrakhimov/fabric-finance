@@ -1,0 +1,245 @@
+createOrReplace:
+  database:
+    name: FinanceSemanticModel
+    compatibilityLevel: 1604
+    model:
+      culture: en-US
+      discourageImplicitMeasures: true
+
+      dataSources:
+        - name: FinanceLakehouseSource
+          type: structured
+          connectionDetails:
+            protocol: tds
+            address:
+              server: "$(FABRIC_SQL_ENDPOINT)"
+              database: FinanceLakehouse
+          credential:
+            authenticationKind: ServicePrincipal
+
+      tables:
+
+        # ── MonthlyPL ───────────────────────────────────────────────────────
+        - name: MonthlyPL
+          annotations:
+            - name: PBI_ResultType
+              value: Table
+          columns:
+            - name: Year
+              dataType: int64
+              sourceColumn: year
+            - name: Quarter
+              dataType: int64
+              sourceColumn: quarter
+            - name: Month
+              dataType: int64
+              sourceColumn: month
+            - name: YearMonth
+              dataType: int64
+              expression: "MonthlyPL[Year] * 100 + MonthlyPL[Month]"
+            - name: Category
+              dataType: string
+              sourceColumn: category
+            - name: TotalAmountUSD
+              dataType: double
+              sourceColumn: total_amount_usd
+            - name: TransactionCount
+              dataType: int64
+              sourceColumn: transaction_count
+            - name: AvgAmountUSD
+              dataType: double
+              sourceColumn: avg_amount_usd
+          measures:
+            - name: Total Revenue USD
+              expression: |
+                CALCULATE(
+                    SUM(MonthlyPL[TotalAmountUSD]),
+                    MonthlyPL[Category] = "Revenue"
+                )
+              formatString: "$#,0.00"
+            - name: Total COGS USD
+              expression: |
+                CALCULATE(
+                    SUM(MonthlyPL[TotalAmountUSD]),
+                    MonthlyPL[Category] = "COGS"
+                )
+              formatString: "$#,0.00"
+            - name: Gross Profit USD
+              expression: |
+                [Total Revenue USD] - [Total COGS USD]
+              formatString: "$#,0.00"
+            - name: Gross Margin %
+              expression: |
+                DIVIDE([Gross Profit USD], [Total Revenue USD], 0)
+              formatString: "0.0%"
+            - name: Total OPEX USD
+              expression: |
+                CALCULATE(
+                    SUM(MonthlyPL[TotalAmountUSD]),
+                    MonthlyPL[Category] IN {"OPEX", "Payroll"}
+                )
+              formatString: "$#,0.00"
+            - name: EBITDA USD
+              expression: |
+                [Gross Profit USD] - [Total OPEX USD]
+              formatString: "$#,0.00"
+            - name: EBITDA Margin %
+              expression: |
+                DIVIDE([EBITDA USD], [Total Revenue USD], 0)
+              formatString: "0.0%"
+          partitions:
+            - name: MonthlyPL-partition
+              mode: directLake
+              source:
+                type: entity
+                schemaName: dbo
+                entityName: gold_monthly_pl
+
+        # ── DeptSpend ───────────────────────────────────────────────────────
+        - name: DeptSpend
+          annotations:
+            - name: PBI_ResultType
+              value: Table
+          columns:
+            - name: Year
+              dataType: int64
+              sourceColumn: year
+            - name: Department
+              dataType: string
+              sourceColumn: department
+            - name: TotalSpendUSD
+              dataType: double
+              sourceColumn: total_spend_usd
+            - name: TransactionCount
+              dataType: int64
+              sourceColumn: transaction_count
+          measures:
+            - name: Total Dept Spend USD
+              expression: SUM(DeptSpend[TotalSpendUSD])
+              formatString: "$#,0.00"
+          partitions:
+            - name: DeptSpend-partition
+              mode: directLake
+              source:
+                type: entity
+                schemaName: dbo
+                entityName: gold_dept_spend
+
+        # ── YTDTotals ───────────────────────────────────────────────────────
+        - name: YTDTotals
+          annotations:
+            - name: PBI_ResultType
+              value: Table
+          columns:
+            - name: Year
+              dataType: int64
+              sourceColumn: year
+            - name: Month
+              dataType: int64
+              sourceColumn: month
+            - name: YearMonth
+              dataType: int64
+              expression: "YTDTotals[Year] * 100 + YTDTotals[Month]"
+            - name: MonthlyTotalUSD
+              dataType: double
+              sourceColumn: monthly_total_usd
+            - name: YTDTotalUSD
+              dataType: double
+              sourceColumn: ytd_total_usd
+          measures:
+            - name: Latest YTD Total USD
+              expression: |
+                CALCULATE(
+                    LASTNONBLANK(YTDTotals[YTDTotalUSD], 1),
+                    ALLSELECTED(YTDTotals[Month])
+                )
+              formatString: "$#,0.00"
+          partitions:
+            - name: YTDTotals-partition
+              mode: directLake
+              source:
+                type: entity
+                schemaName: dbo
+                entityName: gold_ytd_totals
+
+        # ── DateTable ───────────────────────────────────────────────────────
+        - name: DateTable
+          isDateTable: true
+          columns:
+            - name: Date
+              dataType: dateTime
+              isKey: true
+              sourceColumn: Date
+              formatString: "yyyy-MM-dd"
+            - name: Year
+              dataType: int64
+              sourceColumn: Year
+            - name: Quarter
+              dataType: int64
+              sourceColumn: Quarter
+            - name: QuarterLabel
+              dataType: string
+              sourceColumn: QuarterLabel
+            - name: Month
+              dataType: int64
+              sourceColumn: Month
+            - name: MonthName
+              dataType: string
+              sourceColumn: MonthName
+            - name: MonthShort
+              dataType: string
+              sourceColumn: MonthShort
+            - name: WeekOfYear
+              dataType: int64
+              sourceColumn: WeekOfYear
+            - name: DayOfWeek
+              dataType: int64
+              sourceColumn: DayOfWeek
+            - name: IsWeekend
+              dataType: boolean
+              sourceColumn: IsWeekend
+            - name: YearMonth
+              dataType: int64
+              sourceColumn: YearMonth
+          partitions:
+            - name: DateTable-partition
+              mode: import
+              source:
+                type: calculated
+                expression: |
+                  VAR StartDate = DATE(2020, 1, 1)
+                  VAR EndDate   = DATE(2030, 12, 31)
+                  RETURN
+                  ADDCOLUMNS(
+                      CALENDAR(StartDate, EndDate),
+                      "Year",         YEAR([Date]),
+                      "Quarter",      QUARTER([Date]),
+                      "QuarterLabel", "Q" & QUARTER([Date]) & " " & YEAR([Date]),
+                      "Month",        MONTH([Date]),
+                      "MonthName",    FORMAT([Date], "MMMM"),
+                      "MonthShort",   FORMAT([Date], "MMM"),
+                      "WeekOfYear",   WEEKNUM([Date]),
+                      "DayOfWeek",    WEEKDAY([Date], 2),
+                      "IsWeekend",    WEEKDAY([Date], 2) >= 6,
+                      "YearMonth",    YEAR([Date]) * 100 + MONTH([Date])
+                  )
+
+      relationships:
+        - name: MonthlyPL_to_DateTable
+          fromTable: MonthlyPL
+          fromColumn: YearMonth
+          toTable: DateTable
+          toColumn: YearMonth
+          crossFilteringBehavior: bothDirections
+        - name: DeptSpend_to_DateTable
+          fromTable: DeptSpend
+          fromColumn: Year
+          toTable: DateTable
+          toColumn: Year
+          crossFilteringBehavior: bothDirections
+        - name: YTDTotals_to_DateTable
+          fromTable: YTDTotals
+          fromColumn: YearMonth
+          toTable: DateTable
+          toColumn: YearMonth
+          crossFilteringBehavior: bothDirections
